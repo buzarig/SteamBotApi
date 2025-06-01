@@ -33,13 +33,15 @@ namespace SteamBotApi.Controllers
         }
 
         [HttpGet("details")]
-        public async Task<ActionResult<Dictionary<string, object>?>> GetGameDetails(int appId)
+        public async Task<ActionResult<Dictionary<string, object>?>> GetGameDetails(
+            int appId,
+            string cc = "UA",
+            string l = "ukrainian"
+        )
         {
-            var details = await _steamApiService.GetGameDetails(appId);
+            var details = await _steamApiService.GetGameDetails(appId, cc, l);
             if (details == null)
-            {
-                return NotFound("Game details not found");
-            }
+                return NotFound();
             return Ok(details);
         }
     }

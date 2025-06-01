@@ -12,13 +12,16 @@ namespace SteamBotApi.Services
         public SteamApiService(HttpClient httpClient)
         {
             _httpClient = httpClient;
-            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("SteamBotApi/1.0");
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+            );
+            _httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd("uk");
         }
 
         public async Task<List<GameSearchResult>> SearchGamesByName(string name)
         {
             var url =
-                $"https://store.steampowered.com/api/storesearch/?term={Uri.EscapeDataString(name)}&l=english&cc=UA";
+                $"https://store.steampowered.com/api/storesearch/?term={Uri.EscapeDataString(name)}&l=ukrainian&cc=UA";
             var response = await _httpClient.GetAsync(url);
 
             response.EnsureSuccessStatusCode();
@@ -49,15 +52,21 @@ namespace SteamBotApi.Services
             return results;
         }
 
-        public async Task<Dictionary<string, object>?> GetGameDetails(int appId)
+        public async Task<Dictionary<string, object>?> GetGameDetails(
+            int appId,
+            string countryCode = "UA",
+            string language = "ukrainian"
+        )
         {
-            var url = $"https://store.steampowered.com/api/appdetails?appids={appId}";
-            var response = await _httpClient.GetAsync(url);
+            var url =
+                $"https://store.steampowered.com/api/appdetails?appids={appId}&cc={countryCode}&l={language}";
 
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+            var response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
-
             using var doc = JsonDocument.Parse(json);
             if (
                 doc.RootElement.TryGetProperty(appId.ToString(), out JsonElement details)
