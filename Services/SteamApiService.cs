@@ -78,5 +78,28 @@ namespace SteamBotApi.Services
             }
             return null;
         }
+
+        public async Task<List<Dictionary<string, object>>> GetGameNewsAsync(
+            int appId,
+            int count = 1
+        )
+        {
+            var url =
+                $"https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid={appId}&count={count}&maxlength=300";
+            var response = await _httpClient.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(json);
+
+            var newsItems = doc
+                .RootElement.GetProperty("appnews")
+                .GetProperty("newsitems")
+                .EnumerateArray()
+                .Select(x => JsonSerializer.Deserialize<Dictionary<string, object>>(x.GetRawText()))
+                .ToList();
+
+            return newsItems!;
+        }
     }
 }

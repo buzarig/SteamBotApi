@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SteamBotApi.MongoDB;
 using SteamBotApi.Services;
+using SteamStoreBot.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +18,7 @@ if (string.IsNullOrEmpty(connectionString) || string.IsNullOrEmpty(databaseName)
 builder.Services.AddSingleton(sp => new MongoDbContext(connectionString, databaseName));
 
 builder.Services.AddHttpClient<SteamApiService>();
+builder.Services.AddHttpClient<SteamSpyClient>();
 
 builder.Services.AddControllers();
 

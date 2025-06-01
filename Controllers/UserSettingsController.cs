@@ -44,5 +44,12 @@ namespace SteamBotApi.Controllers
             );
             return Ok();
         }
+
+        [HttpGet]
+        public async Task<ActionResult<List<UserSettings>>> GetAllUsers()
+        {
+            var users = await _db.Users.Find(_ => true).ToListAsync();
+            return Ok(users);
+        }
     }
 }

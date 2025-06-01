@@ -1,7 +1,9 @@
-﻿using System.Threading.Tasks;
+﻿using System.Text.Json;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using SteamBotApi.Models;
 using SteamBotApi.Services;
+using SteamStoreBot.Services;
 
 namespace SteamBotApi.Controllers
 {
@@ -10,10 +12,12 @@ namespace SteamBotApi.Controllers
     public class SearchController : ControllerBase
     {
         private readonly SteamApiService _steamApiService;
+        private readonly SteamSpyClient _steamSpyClient;
 
-        public SearchController(SteamApiService steamApiService)
+        public SearchController(SteamApiService steamApiService, SteamSpyClient steamSpyClient)
         {
             _steamApiService = steamApiService;
+            _steamSpyClient = steamSpyClient;
         }
 
         [HttpGet("games")]
@@ -43,6 +47,82 @@ namespace SteamBotApi.Controllers
             if (details == null)
                 return NotFound();
             return Ok(details);
+        }
+
+        [HttpGet("spy-genre")]
+        public async Task<ActionResult<List<GameSearchResult>>> GetFromSpyByGenre(
+            [FromQuery] string genre
+        )
+        {
+            var spyGames = await _steamSpyClient.GetGamesByGenreAsync(genre);
+
+            var result = spyGames
+                .Values.OrderByDescending(g => g.Positive)
+                .Take(20)
+                .Select(g => new GameSearchResult { Id = g.Appid, Name = g.Name })
+                .ToList();
+
+            return Ok(result);
+        }
+
+        [HttpGet("spy-budget")]
+        public async Task<ActionResult<List<GameSearchResult>>> GetFromSpyByBudget(
+            [FromQuery] double max
+        )
+        {
+            if (max <= 0)
+                return BadRequest("Бюджет має бути більше 0");
+
+            var all = await _steamSpyClient.GetAllGamesAsync();
+
+            var paidGames = all
+                .Values.Where(g => g.Price > 0 && g.Price <= max * 100)
+                .OrderByDescending(g => g.Positive)
+                .ThenBy(g => g.Price)
+                .Take(30)
+                .Select(g => new GameSearchResult { Id = g.Appid, Name = g.Name })
+                .ToList();
+
+            if (paidGames.Any())
+                return Ok(paidGames);
+
+            var freeGames = all
+                .Values.Where(g => g.Price == 0)
+                .OrderByDescending(g => g.Positive)
+                .Take(15)
+                .Select(g => new GameSearchResult { Id = g.Appid, Name = g.Name })
+                .ToList();
+
+            return Ok(freeGames);
+        }
+
+        [HttpGet("spy-discounts")]
+        public async Task<ActionResult<List<GameSearchResult>>> GetDiscountedGames()
+        {
+            var all = await _steamSpyClient.GetAllGamesAsync();
+
+            var discountedGames = all
+                .Values.Where(g => g.Price > 0 && g.Discount > 0)
+                .OrderByDescending(g => g.Discount)
+                .Take(10)
+                .Select(g => new GameSearchResult
+                {
+                    Id = g.Appid,
+                    Name = g.Name,
+                    Discount = g.Discount ?? 0,
+                })
+                .ToList();
+
+            return Ok(discountedGames);
+        }
+
+        [HttpGet("news")]
+        public async Task<ActionResult<List<Dictionary<string, object>>>> GetGameNews(
+            [FromQuery] int appId
+        )
+        {
+            var news = await _steamApiService.GetGameNewsAsync(appId, 1);
+            return Ok(news);
         }
     }
 }
