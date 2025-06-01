@@ -45,6 +45,7 @@ namespace SteamBotApi.Services
                     {
                         results.Add(new GameSearchResult { Id = id, Name = gameName });
                         Console.WriteLine($"Game: ID={id}, Name={gameName}");
+                        Console.WriteLine($"test");
                     }
                 }
             }
