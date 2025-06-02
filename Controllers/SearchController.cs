@@ -1,6 +1,4 @@
-﻿using System.Text.Json;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using SteamBotApi.Models;
 using SteamBotApi.Services;
 using SteamStoreBot.Services;
@@ -51,15 +49,32 @@ namespace SteamBotApi.Controllers
 
         [HttpGet("spy-genre")]
         public async Task<ActionResult<List<GameSearchResult>>> GetFromSpyByGenre(
-            [FromQuery] string genre
+            [FromQuery] string genre,
+            [FromQuery] int minRating = 0,
+            [FromQuery] int minVotes = 10
         )
         {
             var spyGames = await _steamSpyClient.GetGamesByGenreAsync(genre);
 
             var result = spyGames
-                .Values.OrderByDescending(g => g.Positive)
+                .Values.Where(g => g.Positive + g.Negative >= minVotes)
+                .Select(g =>
+                {
+                    var total = g.Positive + g.Negative;
+                    var rating = total > 0 ? g.Positive * 100 / total : 0;
+
+                    return new GameSearchResult
+                    {
+                        Id = g.Appid,
+                        Name = g.Name,
+                        Discount = g.Discount ?? 0,
+                        Rating = rating,
+                    };
+                })
+                .Where(g => g.Rating >= minRating)
+                .OrderByDescending(g => g.Rating)
+                .ThenByDescending(g => g.Discount)
                 .Take(20)
-                .Select(g => new GameSearchResult { Id = g.Appid, Name = g.Name })
                 .ToList();
 
             return Ok(result);
@@ -67,7 +82,9 @@ namespace SteamBotApi.Controllers
 
         [HttpGet("spy-budget")]
         public async Task<ActionResult<List<GameSearchResult>>> GetFromSpyByBudget(
-            [FromQuery] double max
+            [FromQuery] double max,
+            [FromQuery] int minRating = 0,
+            [FromQuery] int minVotes = 0
         )
         {
             if (max <= 0)
@@ -77,10 +94,24 @@ namespace SteamBotApi.Controllers
 
             var paidGames = all
                 .Values.Where(g => g.Price > 0 && g.Price <= max * 100)
-                .OrderByDescending(g => g.Positive)
-                .ThenBy(g => g.Price)
+                .Where(g => g.Positive + g.Negative >= minVotes)
+                .Select(g =>
+                {
+                    var total = g.Positive + g.Negative;
+                    var rating = total > 0 ? g.Positive * 100 / total : 0;
+
+                    return new GameSearchResult
+                    {
+                        Id = g.Appid,
+                        Name = g.Name,
+                        Discount = g.Discount ?? 0,
+                        Rating = rating,
+                        Price = g.Price,
+                    };
+                })
+                .Where(g => g.Rating >= minRating)
+                .OrderByDescending(g => g.Price)
                 .Take(30)
-                .Select(g => new GameSearchResult { Id = g.Appid, Name = g.Name })
                 .ToList();
 
             if (paidGames.Any())
@@ -88,9 +119,24 @@ namespace SteamBotApi.Controllers
 
             var freeGames = all
                 .Values.Where(g => g.Price == 0)
-                .OrderByDescending(g => g.Positive)
+                .Where(g => g.Positive + g.Negative >= minVotes)
+                .Select(g =>
+                {
+                    var total = g.Positive + g.Negative;
+                    var rating = total > 0 ? g.Positive * 100 / total : 0;
+
+                    return new GameSearchResult
+                    {
+                        Id = g.Appid,
+                        Name = g.Name,
+                        Discount = g.Discount ?? 0,
+                        Rating = rating,
+                        Price = 0,
+                    };
+                })
+                .Where(g => g.Rating >= minRating)
+                .OrderByDescending(g => g.Rating)
                 .Take(15)
-                .Select(g => new GameSearchResult { Id = g.Appid, Name = g.Name })
                 .ToList();
 
             return Ok(freeGames);
