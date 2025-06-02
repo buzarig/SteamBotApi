@@ -23,6 +23,9 @@ RUN dotnet publish -c Release -o /app/publish
 # 2. Runtime stage – використовуємо .NET 8 runtime
 #############################################
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+# Встановлюємо в контейнері, щоб Kestrel слухав на порту 8080
+ENV ASPNETCORE_URLS=http://+:8080
+
 WORKDIR /app
 
 # Копіюємо з build-стадії згенеровані файли у фінальну /app
