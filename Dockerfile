@@ -1,24 +1,30 @@
-#############################################
-# 1. Build stage: компілюємо проєкт у папку /app/publish
-#############################################
+#####################################################
+# 1. Build stage вЂ“ РєРѕРјРїС–Р»СЋС”РјРѕ РІР°С€ .NET-РїСЂРѕС”РєС‚
+#####################################################
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 WORKDIR /src
 
-# Копіюємо лише csproj, щоб швидше кешувати залежності
-COPY SteamBotApi/SteamBotApi.csproj ./SteamBotApi/
-RUN dotnet restore SteamBotApi/SteamBotApi.csproj
+# РљРѕРїС–СЋС”РјРѕ С„Р°Р№Р» Р· РїСЂРѕРµРєС‚РѕРј (csproj) Сѓ СЂРѕР±РѕС‡Сѓ С‚РµРєСѓ /src
+COPY SteamBotApi.csproj ./
 
-# Копіюємо решту файлів і робимо пабліш
-COPY SteamBotApi/. ./SteamBotApi/
-WORKDIR /src/SteamBotApi
+# Р’С–РґРЅРѕРІР»СЋС”РјРѕ Р·Р°Р»РµР¶РЅРѕСЃС‚С– Р»РёС€Рµ РґР»СЏ С†СЊРѕРіРѕ .csproj
+RUN dotnet restore ./SteamBotApi.csproj
+
+# РљРѕРїС–СЋС”РјРѕ СЂРµС€С‚Сѓ РІСЃС–С… С„Р°Р№Р»С–РІ Сѓ /src (РєРѕРґ, РєРѕРЅС‚СЂРѕР»РµСЂРё, РјРѕРґРµР»С–, appsettings С‚РѕС‰Рѕ)
+COPY . .
+
+# РџРµСЂРµС…РѕРґРёРјРѕ РІ С‚РµРєСѓ Р· .csproj С– Р±СѓРґСѓС”РјРѕ Сѓ Release Сѓ РїР°РїРєСѓ /app/publish
+WORKDIR /src
 RUN dotnet publish -c Release -o /app/publish
 
-#############################################
-# 2. Runtime stage: беремо тільки зібраний Release
-#############################################
+#####################################################
+# 2. Runtime stage вЂ“ Р±РµСЂРµРјРѕ Р»РёС€Рµ runtime-РѕР±СЂР°Р·
+#####################################################
 FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS runtime
 WORKDIR /app
+
+# РљРѕРїС–СЋС”РјРѕ Р· build-СЃС‚Р°РґС–С— Р·РіРµРЅРµСЂРѕРІР°РЅС– С„Р°Р№Р»Рё Сѓ С„С–РЅР°Р»СЊРЅРёР№ РѕР±СЂР°Р·
 COPY --from=build /app/publish ./
 
-# При запуску контейнера буде виконана ця команда
+# РџСЂРё СЃС‚Р°СЂС‚С– РєРѕРЅС‚РµР№РЅРµСЂР° РІРёРєРѕРЅСѓС”РјРѕ С†РµР№ ENTRYPOINT
 ENTRYPOINT ["dotnet", "SteamBotApi.dll"]
